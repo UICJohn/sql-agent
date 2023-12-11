@@ -5,24 +5,13 @@ from .toolkit import SQLDatabaseToolkit
 from langchain.llms.openai import OpenAI
 from langchain.agents.agent import AgentExecutor
 from .prompt import create_agent_chat_prompt
+from langchain.agents.format_scratchpad import format_log_to_str
 from langchain.agents.output_parsers import JSONAgentOutputParser
 from langchain.agents.agent import AgentOutputParser
 from datetime import date
 from langchain_core.agents import AgentAction
 import os
 from typing import List, Tuple
-
-def format_log_to_str(
-    intermediate_steps: List[Tuple[AgentAction, str]],
-    observation_prefix: str = "Observation: ",
-) -> str:
-    """Construct the scratchpad that lets the agent continue its thought process."""
-    thoughts = ""
-    for action, observation in intermediate_steps:
-        thoughts += action.log
-        thoughts += f"\n{observation_prefix}{observation}\n"
-
-    return thoughts
 
 def create_sql_agent_executor(
   llm=OpenAI(temperature=0),
@@ -41,7 +30,10 @@ def create_sql_agent_executor(
     {
       "context": lambda x: f'Today is {date.today().strftime("%Y-%m-%d")}',
       "input": lambda x: x["input"],
-      "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
+      "agent_scratchpad": lambda x: format_log_to_str(
+        x["intermediate_steps"],
+        llm_prefix=""
+      ),
     }
     |
     prompt

@@ -2,6 +2,8 @@ import re
 from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.prompts.prompt import PromptTemplate
 from .toolkit import SQLDatabaseToolkit
+from typing import List
+from datetime import datetime
 # from langchain.agents.mrkl.prompt import FORMAT_INSTRUCTIONS
 
 SYSTEM_SQL_PREFIX = """You are an agent designed to interact with a SQL database.
@@ -56,13 +58,20 @@ Action:
 Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation
 """
 
+def default_context() -> List[str]:
+  return [
+    "The current time and date is" + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+  ]
+
 def create_agent_chat_prompt(
     toolkit: SQLDatabaseToolkit,
     system_message_prefix: str = SYSTEM_SQL_PREFIX,
     system_message_suffix: str = SYSTEM_SQL_SUFFIX,
     human_message: str = HUMAN_MESSAGE,
+    context: List[str] = None,
     format_instructions: str = FORMAT_INSTRUCTIONS,
 ):
+  context = default_context() if context is None else default_context() + context
   tools = toolkit.get_tools()
   tool_strings = []
   for tool in tools:
@@ -83,8 +92,9 @@ def create_agent_chat_prompt(
       format_instructions,
     ]
   )
-
   messages = [
+      SystemMessagePromptTemplate.from_template(
+          template="""{context}""", partial_variables={"context": "\n".join(context)}),
     SystemMessagePromptTemplate.from_template(template=template, partial_variables={ "dialect": toolkit.dialect }),
     HumanMessagePromptTemplate.from_template(human_message),
   ]
